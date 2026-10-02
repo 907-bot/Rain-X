@@ -1,0 +1,50 @@
+{
+  "cyclone_michaung_2023": {
+    "id": "cyclone_michaung_2023",
+    "title": "Cyclone Michaung (Dec 2023)",
+    "regime": "low_depression",
+    "date": "2023-12-04",
+    "description": "Severe cyclonic storm producing catastrophic coastal and eyewall deluge (>200mm) over Andhra Pradesh and Chennai.",
+    "file": "/Users/abhishekadari/projects/Rain-X/data/benchmarks/cyclone_michaung_2023.npz"
+  },
+  "wayanad_cloudburst_2024": {
+    "id": "wayanad_cloudburst_2024",
+    "title": "Wayanad Orographic Cloudburst (July 2024)",
+    "regime": "orographic",
+    "date": "2024-07-30",
+    "description": "Extreme orographic windward rainfall (>260mm) along Western Ghats escarpment triggering devastating debris flows.",
+    "file": "/Users/abhishekadari/projects/Rain-X/data/benchmarks/wayanad_cloudburst_2024.npz"
+  },
+  "north_india_wd_2023": {
+    "id": "north_india_wd_2023",
+    "title": "North India WD Extreme (July 2023)",
+    "regime": "western_disturbance",
+    "date": "2023-07-09",
+    "description": "Upper-tropospheric westerly trough interacting with monsoon flow causing catastrophic Beas & Yamuna floods.",
+    "file": "/Users/abhishekadari/projects/Rain-X/data/benchmarks/north_india_wd_2023.npz"
+  },
+  "monsoon_break_spell_2023": {
+    "id": "monsoon_break_spell_2023",
+    "title": "Monsoon Break Spell (Aug 2023)",
+    "regime": "break_monsoon",
+    "date": "2023-08-18",
+    "description": "Monsoon trough shifted north to foothills; dry central India vs intense sub-Himalayan / Meghalaya downpours.",
+    "file": "/Users/abhishekadari/projects/Rain-X/data/benchmarks/monsoon_break_spell_2023.npz"
+  },
+  "bay_of_bengal_depression_2023": {
+    "id": "bay_of_bengal_depression_2023",
+    "title": "Bay of Bengal Deep Depression (Sept 2023)",
+    "regime": "low_depression",
+    "date": "2023-09-13",
+    "description": "Monsoon depression tracking west-northwest across Odisha and Central India with heavy spiral rainbands.",
+    "file": "/Users/abhishekadari/projects/Rain-X/data/benchmarks/bay_of_bengal_depression_2023.npz"
+  },
+  "active_monsoon_peak_2022": {
+    "id": "active_monsoon_peak_2022",
+    "title": "Active Monsoon Peak Surge (July 2022)",
+    "regime": "active_monsoon",
+    "date": "2022-07-16",
+    "description": "Intense southwesterly low-level jet driving widespread heavy precipitation across peninsular & central India.",
+    "file": "/Users/abhishekadari/projects/Rain-X/data/benchmarks/active_monsoon_peak_2022.npz"
+  }
+}

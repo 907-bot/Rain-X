@@ -1,0 +1,14 @@
+{
+  "train": {
+    "samples": 960,
+    "file": "/Users/abhishekadari/projects/Rain-X/data/processed/train_dataset.npz"
+  },
+  "val": {
+    "samples": 240,
+    "file": "/Users/abhishekadari/projects/Rain-X/data/processed/val_dataset.npz"
+  },
+  "test": {
+    "samples": 480,
+    "file": "/Users/abhishekadari/projects/Rain-X/data/processed/test_dataset.npz"
+  }
+}

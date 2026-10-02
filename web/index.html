@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAIN-X | Regime-Aware Neural Post-Processing Engine (SIH 26080)</title>
+  <meta name="description" content="Operational AI post-processing engine for NWP rainfall forecasts conditioned on meteorological weather regimes, extreme rainfall probabilities, and verification metrics.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand-container">
+      <div class="logo-badge">RAIN-X</div>
+      <div>
+        <h1 class="brand-title">RAIN-X Operational Meteorological Console</h1>
+        <p class="brand-subtitle">Regime-Aware Neural Post-Processing Engine &bull; SIH 26080 &bull; NCMRWF / MoES</p>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="systemStatusText">Operational &bull; NCUM-0.25&deg; Active</span>
+      </div>
+      <div id="clockDisplay" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--cyan-accent);">--:--:-- UTC</div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs" role="tablist">
+    <button class="nav-tab-btn active" data-tab="tab-district" id="tabBtnDistrict" role="tab" aria-selected="true">
+      <span class="icon">&#9729;</span> Operational District Forecast
+    </button>
+    <button class="nav-tab-btn" data-tab="tab-battle" id="tabBtnBattle" role="tab" aria-selected="false">
+      <span class="icon">&#9876;</span> Forecast Battle Mode (NWP vs RAIN-X)
+    </button>
+    <button class="nav-tab-btn" data-tab="tab-regime" id="tabBtnRegime" role="tab" aria-selected="false">
+      <span class="icon">&#9881;</span> Weather Regime Intelligence
+    </button>
+    <button class="nav-tab-btn" data-tab="tab-verification" id="tabBtnVerification" role="tab" aria-selected="false">
+      <span class="icon">&#9745;</span> Verification Laboratory (RMSE &bull; CSI &bull; ETS)
+    </button>
+    <button class="nav-tab-btn" data-tab="tab-agent" id="tabBtnAgent" role="tab" aria-selected="false">
+      <span class="icon">&#9993;</span> AI Forecast Analyst Briefing
+    </button>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    
+    <!-- TAB 1: OPERATIONAL DISTRICT FORECAST -->
+    <section id="tab-district" class="tab-pane active" role="tabpanel">
+      <div class="dashboard-grid">
+        
+        <!-- Left Column: Controls & Weather Summary -->
+        <div class="col-left">
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#128506;</span> District Forecast Configuration</div>
+            </div>
+            
+            <div class="control-row">
+              <div class="control-group">
+                <label for="stateSelect">State / UT</label>
+                <select id="stateSelect"></select>
+              </div>
+              <div class="control-group">
+                <label for="districtSelect">District</label>
+                <select id="districtSelect"></select>
+              </div>
+              <div class="control-group">
+                <label for="stationSelect">Observation Station</label>
+                <select id="stationSelect"></select>
+              </div>
+              <div class="control-group">
+                <label for="leadTimeSelect">Forecast Lead Time</label>
+                <select id="leadTimeSelect">
+                  <option value="6">+6 Hours</option>
+                  <option value="12">+12 Hours</option>
+                  <option value="24" selected>+24 Hours (Day 1)</option>
+                  <option value="48">+48 Hours (Day 2)</option>
+                  <option value="72">+72 Hours (Day 3)</option>
+                </select>
+              </div>
+            </div>
+
+            <button class="btn-primary" id="btnRunDistrictForecast" style="width: 100%;">
+              <span>&#9889;</span> Compute Regime-Aware Post-Processing
+            </button>
+          </div>
+
+          <!-- Alert Level Banner -->
+          <div id="districtAlertCard" class="alert-card GREEN">
+            <div class="alert-badge" id="districtAlertBadge">GREEN</div>
+            <div>
+              <strong id="districtAlertTitle">Routine Meteorological Status</strong>
+              <p id="districtAlertDesc" style="font-size: 0.8rem; margin-top: 0.2rem;">Normal rainfall conditions. No severe weather alert.</p>
+            </div>
+          </div>
+
+          <!-- Primary Metric Deck -->
+          <div class="metrics-deck">
+            <div class="metric-box">
+              <div class="metric-label">Raw NWP Forecast</div>
+              <div class="metric-val" id="metricRawNWP">-- mm</div>
+              <div class="metric-sub">NCMRWF NCUM</div>
+            </div>
+            <div class="metric-box highlight">
+              <div class="metric-label">RAIN-X Corrected</div>
+              <div class="metric-val" style="color: var(--cyan-accent);" id="metricRainX">-- mm</div>
+              <div class="metric-sub" id="metricDelta">Delta: -- mm</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">80% Prediction Interval</div>
+              <div class="metric-val" style="font-size: 1.15rem;" id="metricInterval">-- - -- mm</div>
+              <div class="metric-sub">Quantile [q10 - q90]</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Model Confidence</div>
+              <div class="metric-val" style="color: var(--emerald-accent);" id="metricConfidence">--%</div>
+              <div class="metric-sub">Entropy &amp; Sharpness</div>
+            </div>
+          </div>
+
+          <!-- IMD Extreme Threshold Exceedance Probabilities -->
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#9888;</span> Extreme Rainfall Exceedance Probabilities P(R &gt; &tau;)</div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; text-align: center;">
+              <div class="metric-box">
+                <div class="metric-label">&gt; 15.6 mm (Moderate)</div>
+                <div class="metric-val" style="font-size: 1.2rem; color: #38BDF8;" id="probModerate">--%</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">&gt; 64.5 mm (Heavy)</div>
+                <div class="metric-val" style="font-size: 1.2rem; color: #F59E0B;" id="probHeavy">--%</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">&gt; 115.5 mm (Very Heavy)</div>
+                <div class="metric-val" style="font-size: 1.2rem; color: #F97316;" id="probVeryHeavy">--%</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">&gt; 204.4 mm (Extremely Heavy)</div>
+                <div class="metric-val" style="font-size: 1.2rem; color: #EF4444;" id="probExtremelyHeavy">--%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model Comparison Suite Table -->
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#128202;</span> Multi-Model Baseline Comparison Layer</div>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+              Direct comparison of raw forecast vs linear bias correction vs quantile mapping vs global ML vs RAIN-X MoE.
+            </p>
+            <div class="data-table-container">
+              <table class="data-table" id="districtModelComparisonTable">
+                <thead>
+                  <tr>
+                    <th>Post-Processing Model</th>
+                    <th>Predicted Rain (mm)</th>
+                    <th>Correction Delta</th>
+                    <th>Technique</th>
+                  </tr>
+                </thead>
+                <tbody id="districtModelComparisonBody">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: GIS Map & Meteorological XAI -->
+        <div class="col-right">
+          <!-- Geospatial Map Container -->
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#127757;</span> Indian Meteorological Domain &bull; Orography DEM (0.25&deg;)</div>
+              <span id="mapStationMeta" style="font-size: 0.8rem; color: var(--cyan-accent); font-family: var(--font-mono);">Lat: -- | Lon: --</span>
+            </div>
+            <div class="map-canvas-container">
+              <canvas id="mapCanvas"></canvas>
+              <div class="map-overlay-legend">
+                <div>Topographic Elevation (m)</div>
+                <div class="legend-scale">
+                  <span>0m</span>
+                  <div class="legend-bar"></div>
+                  <span>5000m+</span>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">
+              <span id="mapBasinInfo">River Basin: --</span>
+              <span id="mapCoastalInfo">Maritime: --</span>
+              <span id="mapElevationInfo">Elevation: -- m</span>
+            </div>
+          </div>
+
+          <!-- Meteorological XAI Audit Trail -->
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#128269;</span> Explainable AI (XAI) &bull; Meteorological Physical Attribution</div>
+              <span id="xaiRegimeTag" style="font-size: 0.8rem; background: rgba(0, 242, 254, 0.15); color: var(--cyan-accent); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">--</span>
+            </div>
+            
+            <div style="margin-bottom: 0.8rem;">
+              <strong style="font-size: 0.85rem; color: var(--text-main);">Synoptic Physical Rationale:</strong>
+              <p id="xaiReasonText" style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.3rem; line-height: 1.5;">
+                Select a station to generate physics attribution.
+              </p>
+            </div>
+
+            <div style="margin-bottom: 0.8rem;">
+              <strong style="font-size: 0.85rem; color: var(--text-main);">Historical Systematic Bias Profile:</strong>
+              <p id="xaiBiasProfile" style="font-size: 0.82rem; color: #F59E0B; margin-top: 0.3rem; font-family: var(--font-mono);">--</p>
+            </div>
+
+            <strong style="font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase;">Key Atmospheric Forcing Contributors:</strong>
+            <div id="xaiContributorsList" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem;">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: FORECAST BATTLE MODE -->
+    <section id="tab-battle" class="tab-pane" role="tabpanel">
+      <div class="glass-card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">&#9876;</span> Forecast Battle: Raw NWP vs RAIN-X vs Held-Out Observations</div>
+          <span style="font-size: 0.8rem; color: var(--cyan-accent);">SIH Extreme Event Verification Benchmark</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Select a verified historical extreme weather event to evaluate the side-by-side performance of Raw NWP versus the RAIN-X post-processor against IMD ground truth observations.
+        </p>
+
+        <div class="control-row" style="max-width: 600px;">
+          <div class="control-group">
+            <label for="battleEventSelect">Historical Benchmark Extreme Event</label>
+            <select id="battleEventSelect"></select>
+          </div>
+          <div class="control-group" style="align-self: flex-end;">
+            <button class="btn-primary" id="btnRunBattle">Launch Event Battle</button>
+          </div>
+        </div>
+
+        <div id="battleEventDesc" style="font-size: 0.85rem; color: var(--cyan-accent); margin-bottom: 1rem; font-style: italic;">
+          Loading event metadata...
+        </div>
+
+        <!-- 3-Way Scoreboard Cards -->
+        <div class="battle-scoreboard">
+          <div class="battle-card raw">
+            <div style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Raw NWP Forecast</div>
+            <div class="battle-val" id="battleRawVal">-- mm</div>
+            <div style="font-size: 0.8rem; color: #EF4444;" id="battleRawError">Error: -- mm</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">NCMRWF Raw Numerical Model</div>
+          </div>
+
+          <div class="battle-card rainx">
+            <div style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--cyan-accent);">RAIN-X AI Post-Processor</div>
+            <div class="battle-val" id="battleRainXVal">-- mm</div>
+            <div style="font-size: 0.8rem; color: var(--emerald-accent);" id="battleRainXError">Error: -- mm</div>
+            <div style="font-size: 0.75rem; color: var(--cyan-accent); font-weight: 700; margin-top: 0.4rem;" id="battleReduction">
+              Error Reduction: -- mm
+            </div>
+          </div>
+
+          <div class="battle-card observed">
+            <div style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--emerald-accent);">IMD Observed Ground Truth</div>
+            <div class="battle-val" id="battleObsVal">-- mm</div>
+            <div style="font-size: 0.8rem; color: var(--emerald-accent);">Verified Observation</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">0.25&deg; Merged Gauge + Radar</div>
+          </div>
+        </div>
+
+        <!-- Battle Synoptic Grid Map & Verification Scorecard -->
+        <div class="dashboard-grid">
+          <div>
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#128506;</span> 2D Spatial Precipitation Grid Field</div>
+              <div style="display: flex; gap: 0.4rem;">
+                <button class="nav-tab-btn active" id="btnViewRainXGrid" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">RAIN-X</button>
+                <button class="nav-tab-btn" id="btnViewRawNWPGrid" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Raw NWP</button>
+                <button class="nav-tab-btn" id="btnViewObsGrid" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Observed</button>
+                <button class="nav-tab-btn" id="btnViewReductionGrid" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Error Reduction</button>
+              </div>
+            </div>
+            <div class="map-canvas-container" style="height: 380px;">
+              <canvas id="battleCanvas"></canvas>
+            </div>
+          </div>
+
+          <div>
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#128200;</span> Event Quantitative Skill Comparison</div>
+            </div>
+            <div class="data-table-container">
+              <table class="data-table" id="battleVerificationTable">
+                <thead>
+                  <tr>
+                    <th>Verification Metric</th>
+                    <th>Raw NWP</th>
+                    <th>RAIN-X MoE</th>
+                    <th>Improvement</th>
+                  </tr>
+                </thead>
+                <tbody id="battleVerificationBody">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Meteorological Why Card -->
+            <div class="glass-card" style="margin-top: 1rem; border-color: rgba(0, 242, 254, 0.3);">
+              <strong style="color: var(--cyan-accent); font-size: 0.85rem;">Why did RAIN-X outperform Raw NWP?</strong>
+              <p id="battleWhyText" style="font-size: 0.82rem; color: var(--text-main); margin-top: 0.4rem; line-height: 1.5;">
+                --
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: REGIME INTELLIGENCE -->
+    <section id="tab-regime" class="tab-pane" role="tabpanel">
+      <div class="dashboard-grid">
+        <div class="col-left">
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#9881;</span> Physics-Informed Soft Regime Classifier</div>
+              <span id="regimeDominantBadge" style="color: var(--cyan-accent); font-weight: 700; font-size: 0.85rem;">--</span>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+              The engine infers continuous soft probability vectors across the 6 official meteorological regimes to drive the Mixture-of-Experts (MoE) weighting:
+              <br><code style="color: var(--cyan-accent);">&#375; = &sum; p_k(X) &bull; f_k(X)</code>
+            </p>
+
+            <div class="regime-bar-list" id="regimeBarsContainer">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#127744;</span> Real-Time Synoptic Atmospheric Diagnostics</div>
+            </div>
+            <div class="metrics-deck">
+              <div class="metric-box">
+                <div class="metric-label">850 hPa Vorticity (&zeta;)</div>
+                <div class="metric-val" id="diagVorticity">--</div>
+                <div class="metric-sub">10&oline;&sup5; s&oline;&sup1; (Cyclonic)</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Moisture Convergence</div>
+                <div class="metric-val" id="diagMFC">--</div>
+                <div class="metric-sub">-&nabla;&bull;(qV) (g/kg s&oline;&sup1;)</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Pressure Anomaly</div>
+                <div class="metric-val" id="diagPressureAnom">--</div>
+                <div class="metric-sub">hPa vs Baseline</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Orographic Uplift</div>
+                <div class="metric-val" id="diagOFI">--</div>
+                <div class="metric-sub">V&bull;&nabla;DEM Index</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-right">
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">&#128214;</span> IMD &amp; NCMRWF Weather Regime Definitions</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.85rem; font-size: 0.82rem; line-height: 1.5;">
+              <div>
+                <strong style="color: var(--cyan-accent);">1. Active Monsoon:</strong>
+                <p style="color: var(--text-muted);">Monsoon trough positioned south of normal over central India with strong southwesterly low-level jet (&gt;15 m/s) and negative sea level pressure anomalies.</p>
+              </div>
+              <div>
+                <strong style="color: var(--amber-accent);">2. Break Monsoon:</strong>
+                <p style="color: var(--text-muted);">Trough shifted north to the Himalayan foothills. Convection severely suppressed over central India with intense precipitation confined to Sub-Himalayan NE India and southeastern peninsula.</p>
+              </div>
+              <div>
+                <strong style="color: var(--rose-accent);">3. Low-Pressure / Depression:</strong>
+                <p style="color: var(--text-muted);">Organized cyclonic vortex with central pressure deficit &lt;1000 hPa, strong low-level cyclonic vorticity, and high-volume moisture convergence.</p>
+              </div>
+              <div>
+                <strong style="color: #38BDF8;">4. Coastal Rainfall:</strong>
+                <p style="color: var(--text-muted);">Thermally and frictionally driven coastal boundary convergence along the Arabian Sea and Bay of Bengal coastlines with elevated maritime humidity.</p>
+              </div>
+              <div>
+                <strong style="color: var(--emerald-accent);">5. Orographic Rainfall:</strong>
+                <p style="color: var(--text-muted);">Orthogonal low-level onshore flow impinging directly on steep terrain (Western Ghats windward escarpment and Meghalaya hills) causing intense condensation.</p>
+              </div>
+              <div>
+                <strong style="color: var(--purple-accent);">6. Western Disturbance:</strong>
+                <p style="color: var(--text-muted);">Upper-tropospheric mid-latitude westerly trough tracking eastward across northwest India interacting with Arabian Sea moisture.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: VERIFICATION LABORATORY -->
+    <section id="tab-verification" class="tab-pane" role="tabpanel">
+      <div class="glass-card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">&#127942;</span> Official SIH 26080 Verification Benchmark Scorecard</div>
+          <span style="font-size: 0.8rem; color: var(--emerald-accent); font-family: var(--font-mono);">Held-Out Test Set (2023-2024 Chronological Split)</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Mandatory operational verification metrics requested by NCMRWF / IMD: Root Mean Square Error (RMSE), Critical Success Index (CSI), Equitable Threat Score (ETS), Probability of Detection (POD), False Alarm Ratio (FAR), and Fractions Skill Score (FSS) at the &gt;64.5 mm heavy rainfall threshold.
+        </p>
+
+        <div class="data-table-container">
+          <table class="data-table" id="scorecardTable">
+            <thead>
+              <tr>
+                <th>Post-Processing Model</th>
+                <th>RMSE (mm) &darr;</th>
+                <th>MAE (mm) &darr;</th>
+                <th>Mean Bias</th>
+                <th>POD &uarr;</th>
+                <th>FAR &darr;</th>
+                <th>CSI &uarr;</th>
+                <th>ETS &uarr;</th>
+                <th>FSS (Spatial) &uarr;</th>
+              </tr>
+            </thead>
+            <tbody id="scorecardBody">
+              <!-- Populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: 1.5rem;" class="card-header">
+          <div class="card-title"><span class="icon">&#128202;</span> Regime-Stratified Performance Matrix</div>
+        </div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.8rem;">
+          Verification metrics broken down by individual atmospheric regimes to identify where post-processing adds maximum operational value.
+        </p>
+        <div class="data-table-container">
+          <table class="data-table" id="regimeStratifiedTable">
+            <thead>
+              <tr>
+                <th>Meteorological Regime</th>
+                <th>Raw NWP RMSE</th>
+                <th>RAIN-X RMSE</th>
+                <th>RMSE Reduction</th>
+                <th>Raw CSI</th>
+                <th>RAIN-X CSI</th>
+                <th>Raw ETS</th>
+                <th>RAIN-X ETS</th>
+              </tr>
+            </thead>
+            <tbody id="regimeStratifiedBody">
+              <!-- Populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: AI FORECAST ANALYST AGENT -->
+    <section id="tab-agent" class="tab-pane" role="tabpanel">
+      <div class="glass-card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">&#9993;</span> Autonomous AI Forecast Analyst Operational Briefing</div>
+          <span id="agentBriefingLead" style="font-size: 0.8rem; color: var(--cyan-accent); font-family: var(--font-mono);">+24 Hours Lead Time</span>
+        </div>
+        
+        <div class="briefing-box">
+          <div style="font-size: 1.05rem; font-weight: 800; color: #FFFFFF; margin-bottom: 0.4rem;" id="briefingTitle">
+            NCMRWF Operational Forecast Briefing
+          </div>
+          <p id="briefingExecSummary" style="color: #E2E8F0; font-size: 0.9rem;">
+            Loading latest operational assessment...
+          </p>
+
+          <div class="briefing-section-title">&#127744; Synoptic Meteorological Reasoning</div>
+          <p id="briefingSynoptic" style="color: var(--text-muted);">--</p>
+
+          <div class="briefing-section-title">&#9888; Extreme Rainfall &amp; Civil Defence Risk</div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.5rem; margin-top: 0.4rem;">
+            <div class="metric-box">
+              <div class="metric-label">Heavy Rain Risk (&gt;64.5mm)</div>
+              <div class="metric-val" style="font-size: 1.1rem; color: var(--amber-accent);" id="briefingRiskP64">--</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Very Heavy (&gt;115.5mm)</div>
+              <div class="metric-val" style="font-size: 1.1rem; color: var(--rose-accent);" id="briefingRiskP115">--</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Model Verification Trust (CSI)</div>
+              <div class="metric-val" style="font-size: 1.1rem; color: var(--emerald-accent);" id="briefingTrustCSI">--</div>
+            </div>
+          </div>
+
+          <div class="briefing-section-title">&#128657; Duty Forecaster &amp; Disaster Agency Action Items</div>
+          <p id="briefingRecommendation" style="color: #F87171; font-weight: 600; margin-bottom: 0.5rem;">--</p>
+          <ul id="briefingActionItems" style="margin-left: 1.25rem; color: var(--text-main); font-size: 0.85rem;">
+            <!-- Populated by JavaScript -->
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <p>RAIN-X &bull; Regime-Aware Neural Post-Processing Engine &bull; Developed for SIH 26080 (NCMRWF / MoES)</p>
+    <p style="margin-top: 0.25rem; font-size: 0.72rem; color: rgba(255, 255, 255, 0.4);">
+      Adheres strictly to IMD 0.25&deg; gridded climatology standards, physics-informed Mixture-of-Experts, and held-out temporal validation (2018-2024).
+    </p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
