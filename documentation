@@ -1,0 +1,53 @@
+# Implementation Plan: RAIN-X (SIH 26080)
+## Regime-Aware Neural Post-Processing Engine for NWP Rainfall Forecasts
+
+### Project Overview
+RAIN-X is an operational meteorological AI engine designed to solve Smart India Hackathon (SIH 26080) posed by NCMRWF / MoES. The core scientific mission is:
+**Given a raw NWP rainfall forecast, identify the prevailing atmospheric weather regime, apply the appropriate regime-specific neural correction, and demonstrate objectively that the corrected forecast is statistically and operationally superior to raw NWP.**
+
+### System Architecture (10 Major Modules)
+1. **Module 1 — NWP Ingestion Engine**:
+   - Ingests multi-variable atmospheric state (lead times +6h to +72h, rainfall, t2m, mslp, u850, v850, u200, v200, z500, omega500, rh850, tcwv, cape).
+   - Supports 0.25° × 0.25° IMD/NCMRWF standard grid covering India (8°N–38°N, 68°E–98°E).
+2. **Module 2 — Weather Regime Intelligence**:
+   - Classifies 6 official meteorological regimes:
+     * Active Monsoon, Break Monsoon, Low-Pressure / Depression, Coastal Rainfall, Orographic Rainfall, Western Disturbance.
+   - Computes physics-derived atmospheric features (Vorticity, Moisture Flux Convergence, Orographic Forcing Index, Central India Pressure Anomaly, Monsoon Trough Latitude, Westerly Jet Index).
+   - Implements soft regime classification generating a continuous gating probability vector $\mathbf{p} = [p_1, \dots, p_6]$ ($\sum p_k = 1$).
+3. **Module 3 — Regime-Aware AI Post-Processor (Mixture-of-Experts)**:
+   - Formulates post-processing as a Mixture-of-Experts: $\hat{y} = \sum_{k=1}^K p_k(X) f_k(X)$.
+   - Evaluates multi-model baseline comparison hierarchy:
+     * Baseline 0: Raw NWP Forecast
+     * Baseline 1: Global Linear Bias Correction
+     * Baseline 2: Quantile Mapping (CDF-matching)
+     * Model 3: Random Forest / Gradient Boosting Regressor
+     * Model 4: LightGBM / Deep MLP Post-Processor
+     * Model 5: RAIN-X Physics-Guided Mixture-of-Experts (MoE)
+   - Integrates Physics-Guided Loss (non-negativity $\hat{R} \ge 0$, extreme event weighting, spatial smoothness).
+4. **Module 4 — Extreme Rainfall Engine**:
+   - Operational IMD thresholds: Moderate (>15.6mm), Heavy (>64.5mm), Very Heavy (>115.5mm), Extremely Heavy (>204.4mm).
+   - Calibrated exceedance probabilities $P(R > \tau)$ and automated IMD warning alert color codes (Green, Yellow, Orange, Red).
+5. **Module 5 — Probabilistic Calibration & Uncertainty Estimation**:
+   - Quantile regression models (10th, 50th, 90th percentiles).
+   - Prediction intervals $[q_{0.10}, q_{0.90}]$ and composite confidence score $\mathcal{C} \in [0.0, 1.0]$.
+6. **Module 6 — Spatial Intelligence**:
+   - Topography DEM (Western Ghats, Himalayas, Deccan Plateau), river basins, coastlines, and geospatial spatial operators.
+7. **Module 7 — District-Level Forecasting**:
+   - Hierarchical State $\to$ District $\to$ Sub-district forecasting with downscaling and operational summary metrics.
+8. **Module 8 — Forecast Explainability (XAI)**:
+   - Meteorological attribution linking observed errors to physical drivers (moisture convergence, orographic forcing, wind anomalies) and regime bias history.
+9. **Module 9 & 10 — Verification Engine & Spatial Verification**:
+   - Comprehensive quantitative skill metrics: RMSE, MAE, Bias, CSI (Threat Score), ETS (Equitable Threat Score), POD, FAR, FSS (Fractions Skill Score).
+   - Regime-stratified verification matrix and 2D spatial error reduction fields.
+10. **NCMRWF-Grade Operational Console & Forecast Battle Mode**:
+    - High-aesthetic interactive UI with dark theme, Leaflet/Canvas raster rendering, Forecast Battle Mode (Raw vs RAIN-X vs Observed), and AI Forecast Analyst Agent.
+
+### Verification Plan
+#### Automated Security Check
+- **Security Scanner**: Check code against web vulnerabilities (XSS, path traversal, injection). Ensure vanilla JS uses safe DOM APIs (`textContent`, `createElement`, `replaceChildren`) and no raw `innerHTML` or unsanitized sink.
+- **Security Audit**: Verify server binds strictly to `127.0.0.1` (no `0.0.0.0`), sanitize input parameters on all REST endpoints, and implement defensive boundary checks.
+
+#### Scientific & Machine Learning Verification
+- Chronological train/validation/test split (e.g. 2018–2021 Train, 2022 Validation, 2023–2024 Test) ensuring no spatial or temporal data leakage.
+- Unit and integration tests for all 10 modules: verification metric correctness (ETS, CSI, POD, FAR, FSS), MoE convergence, non-negative rainfall constraints, and API responses.
+- Objective verification demonstrating $Skill(\text{RAIN-X}) > Skill(\text{Raw NWP})$.
